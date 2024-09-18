@@ -69,6 +69,29 @@ open_redir_fd(char *file, int flags)
 	return -1;
 }
 
+void
+load_arguments(struct execcmd *exec_cmd)
+{
+}
+
+void
+load_exec_cmd(struct execcmd *exec_cmd, struct cmd *cmd)
+{
+	exec_cmd->type = cmd->type;
+	exec_cmd->pid = cmd->pid;
+	strcpy(exec_cmd->scmd, cmd->scmd);
+
+	exec_cmd->argc = 0;
+	exec_cmd->eargc = 0;
+	exec_cmd->out_file[0] = END_STRING;
+	exec_cmd->in_file[0] = END_STRING;
+	exec_cmd->err_file[0] = END_STRING;
+
+	// TODO Parsing de variables de entorno
+
+	load_arguments(exec_cmd);
+}
+
 // executes a command - does not return
 //
 // Hint:
@@ -84,12 +107,29 @@ exec_cmd(struct cmd *cmd)
 	struct execcmd *r;
 	struct pipecmd *p;
 
+	/*int type;
+	pid_t pid;
+	char scmd[BUFLEN];
+	int argc;
+	int eargc;
+	char *argv[MAXARGS];
+	char *eargv[MAXARGS];
+	char out_file[FNAMESIZE];
+	char in_file[FNAMESIZE];
+	char err_file[FNAMESIZE];*/
+
+
 	switch (cmd->type) {
 	case EXEC:
-		// spawns a command
-		//
-		// Your code here
-		printf("Commands are not yet implemented\n");
+		// load_exec_cmd(&execcmd, cmd);
+		e = (struct execcmd *) cmd;
+		char *execvp_buff[MAXARGS + 1] = { NULL };
+		for (int i = 0; i < e->argc; i++) {
+			execvp_buff[i] = e->argv[i];
+		}
+
+		execvp(e->argv[0], execvp_buff);
+
 		_exit(-1);
 		break;
 
