@@ -107,18 +107,6 @@ exec_cmd(struct cmd *cmd)
 	struct execcmd *r;
 	struct pipecmd *p;
 
-	/*int type;
-	pid_t pid;
-	char scmd[BUFLEN];
-	int argc;
-	int eargc;
-	char *argv[MAXARGS];
-	char *eargv[MAXARGS];
-	char out_file[FNAMESIZE];
-	char in_file[FNAMESIZE];
-	char err_file[FNAMESIZE];*/
-
-
 	switch (cmd->type) {
 	case EXEC:
 		// load_exec_cmd(&execcmd, cmd);
