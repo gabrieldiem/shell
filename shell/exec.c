@@ -3,6 +3,8 @@
 static const char STR_COMBINE_STREAM_2_INTO_STREAM_1[] = "&1";
 static const int LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1 = 2;
 
+static const int GENERIC_ERROR_CODE = -1;
+
 // sets "key" with the key part of "arg"
 // and null-terminates it
 //
@@ -72,7 +74,7 @@ open_redir_fd(char *file, int flags)
 	return -1;
 }
 
-void
+static void
 run_exec(struct execcmd *exec_cmd)
 {
 	char *execvp_buff[MAXARGS + 1] = { NULL };
@@ -82,9 +84,14 @@ run_exec(struct execcmd *exec_cmd)
 	}
 
 	execvp(exec_cmd->argv[0], execvp_buff);
+	perror("Error on exec");
 }
 
-bool
+/*
+ * Returns `true` if the stream 2 into stream 1 redirection is present,
+ * returns `false` otherwise
+ */
+static bool
 should_combine_stream_2_into_stream_1(struct execcmd *exec_cmd)
 {
 	return strncmp(exec_cmd->err_file,
@@ -92,10 +99,17 @@ should_combine_stream_2_into_stream_1(struct execcmd *exec_cmd)
 	               LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1) == 0;
 }
 
-void
+/*
+ * Close the current stderr FD and create a new stderr FD that points to
+ * the stdout file
+ */
+static void
 combine_stream_2_into_stream_1()
 {
-	dup2(STDOUT_FILENO, STDERR_FILENO);
+	int res = dup2(STDOUT_FILENO, STDERR_FILENO);
+	if (res == GENERIC_ERROR_CODE) {
+		perror("Error: cannot combine STDERR output into STDOUT");
+	}
 }
 
 // executes a command - does not return
