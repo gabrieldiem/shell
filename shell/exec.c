@@ -88,6 +88,16 @@ run_exec(struct execcmd *exec_cmd)
 }
 
 /*
+ * Returns `true` if the output file redirection is present,
+ * returns `false` otherwise.
+ */
+static bool
+should_redirect_output_file(struct execcmd *exec_cmd)
+{
+	return strlen(exec_cmd->out_file) > 0;
+}
+
+/*
  * Returns `true` if the stream 2 into stream 1 redirection is present,
  * returns `false` otherwise
  */
@@ -141,6 +151,28 @@ redirect_stream_2_into_file(struct execcmd *exec_cmd)
 	}
 }
 
+
+/*
+ * Opens the file (or creates a new one if it doesn't exist) and writes
+ * the STDOUT output on it.
+ */
+static void
+redirect_output_into_file(struct execcmd *exec_cmd)
+{
+	int fd = open(exec_cmd->out_file, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+	if (fd < 0) {
+		perror("Error: cannot open redirection file");
+		_exit(EXIT_FAILURE);
+	}
+
+	int d = dup2(fd, STDOUT_FILENO);
+	if (d == GENERIC_ERROR_CODE) {
+		perror("Error: cannot redirect STDOUT output into file");
+		close(fd);
+	}
+	close(fd);
+}
+
 // executes a command - does not return
 //
 // Hint:
@@ -186,6 +218,8 @@ exec_cmd(struct cmd *cmd)
 			combine_stream_2_into_stream_1();
 		} else if (should_redirect_stream_2_into_file(redir_cmd)) {
 			redirect_stream_2_into_file(redir_cmd);
+		} else if (should_redirect_output_file(redir_cmd)) {
+			redirect_output_into_file(redir_cmd);
 		}
 
 		run_exec(redir_cmd);
