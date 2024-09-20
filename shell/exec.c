@@ -87,6 +87,16 @@ run_exec(struct execcmd *exec_cmd)
 	perror("Error on exec");
 }
 
+static void
+verify_redirection_file(int fd)
+{
+	if (fd < 0) {
+		perror("Error: cannot open redirection file");
+		// CHEQUEAR
+		_exit(EXIT_FAILURE);
+	}
+}
+
 /*
  * Returns `true` if the output file redirection is present,
  * returns `false` otherwise.
@@ -150,15 +160,14 @@ static void
 redirect_stream_2_into_file(struct execcmd *exec_cmd)
 {
 	int fd = open(exec_cmd->err_file, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
-	if (fd < 0) {
-		perror("Error: cannot open redirection file");
-		_exit(EXIT_FAILURE);
-	}
+	verify_redirection_file(fd);
 
 	int d = dup2(fd, STDERR_FILENO);
 	if (d == GENERIC_ERROR_CODE) {
 		perror("Error: cannot redirect STDERR output into file");
+		close(fd);
 	}
+	//close(fd);
 }
 
 
@@ -170,10 +179,7 @@ static void
 redirect_output_into_file(struct execcmd *exec_cmd)
 {
 	int fd = open(exec_cmd->out_file, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
-	if (fd < 0) {
-		perror("Error: cannot open redirection file");
-		_exit(EXIT_FAILURE);
-	}
+	verify_redirection_file(fd);
 
 	int d = dup2(fd, STDOUT_FILENO);
 	if (d == GENERIC_ERROR_CODE) {
@@ -184,16 +190,13 @@ redirect_output_into_file(struct execcmd *exec_cmd)
 }
 
 /*
- * Opens the file and reads the content of it to be used as the STDIN input
+ * Opens the file and reads the content of it to be used as the STDIN input.
  */
 static void
 redirect_input_into_file(struct execcmd *exec_cmd)
 {
 	int fd = open(exec_cmd->in_file, O_RDONLY | O_CLOEXEC);
-	if (fd < 0) {
-		perror("Error: cannot open redirection file");
-		_exit(EXIT_FAILURE);
-	}
+	verify_redirection_file(fd);
 
 	int d = dup2(fd, STDIN_FILENO);
 	if (d == GENERIC_ERROR_CODE) {
