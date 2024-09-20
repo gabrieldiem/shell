@@ -1,7 +1,7 @@
 #include "exec.h"
 
 static const char STR_COMBINE_STREAM_2_INTO_STREAM_1[] = "&1";
-static const int LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1 = 2;
+static const int LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1 = 3;
 
 static const int GENERIC_ERROR_CODE = -1;
 
