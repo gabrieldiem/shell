@@ -85,6 +85,36 @@ run_exec(struct execcmd *exec_cmd)
 	perror("Error on exec");
 }
 
+static void
+verify_redirection_file(int fd)
+{
+	if (fd < 0) {
+		perror("Error: cannot open redirection file");
+		// CHEQUEAR
+		_exit(EXIT_FAILURE);
+	}
+}
+
+/*
+ * Returns `true` if the output file redirection is present,
+ * returns `false` otherwise.
+ */
+static bool
+should_redirect_output_file(struct execcmd *exec_cmd)
+{
+	return strlen(exec_cmd->out_file) > 0;
+}
+
+/*
+ * Returns `true` if the input file redirection is present,
+ * returns `false` otherwise.
+ */
+static bool
+should_redirect_input_file(struct execcmd *exec_cmd)
+{
+	return strlen(exec_cmd->in_file) > 0;
+}
+
 /*
  * Returns `true` if the stream 2 into stream 1 redirection is present,
  * returns `false` otherwise
@@ -108,6 +138,70 @@ combine_stream_2_into_stream_1()
 	if (res == GENERIC_ERROR_CODE) {
 		perror("Error: cannot combine STDERR output into STDOUT");
 	}
+}
+
+/*
+ * Returns `true` if the stream 2 into a file redirection is present,
+ * returns `false` otherwise
+ */
+static bool
+should_redirect_stream_2_into_file(struct execcmd *exec_cmd)
+{
+	return strlen(exec_cmd->err_file) > 0;
+}
+
+/*
+ * Opens the file (or creates a new one if it doesn't exist) and writes
+ * the STDERR output on it
+ */
+static void
+redirect_stream_2_into_file(struct execcmd *exec_cmd)
+{
+	int fd = open(exec_cmd->err_file, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+	verify_redirection_file(fd);
+
+	int d = dup2(fd, STDERR_FILENO);
+	if (d == GENERIC_ERROR_CODE) {
+		perror("Error: cannot redirect STDERR output into file");
+		close(fd);
+	}
+	//close(fd);
+}
+
+
+/*
+ * Opens the file (or creates a new one if it doesn't exist) and writes
+ * the STDOUT output on it.
+ */
+static void
+redirect_output_into_file(struct execcmd *exec_cmd)
+{
+	int fd = open(exec_cmd->out_file, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+	verify_redirection_file(fd);
+
+	int d = dup2(fd, STDOUT_FILENO);
+	if (d == GENERIC_ERROR_CODE) {
+		perror("Error: cannot redirect STDOUT output into file");
+		close(fd);
+	}
+	close(fd);
+}
+
+/*
+ * Opens the file and reads the content of it to be used as the STDIN input.
+ */
+static void
+redirect_input_into_file(struct execcmd *exec_cmd)
+{
+	int fd = open(exec_cmd->in_file, O_RDONLY | O_CLOEXEC);
+	verify_redirection_file(fd);
+
+	int d = dup2(fd, STDIN_FILENO);
+	if (d == GENERIC_ERROR_CODE) {
+		perror("Error: cannot redirect STDIN input into file");
+		close(fd);
+	}
+	close(fd);
 }
 
 // executes a command - does not return
@@ -153,6 +247,12 @@ exec_cmd(struct cmd *cmd)
 
 		if (should_combine_stream_2_into_stream_1(redir_cmd)) {
 			combine_stream_2_into_stream_1();
+		} else if (should_redirect_stream_2_into_file(redir_cmd)) {
+			redirect_stream_2_into_file(redir_cmd);
+		} else if (should_redirect_output_file(redir_cmd)) {
+			redirect_output_into_file(redir_cmd);
+		} else if (should_redirect_input_file(redir_cmd)) {
+			redirect_input_into_file(redir_cmd);
 		}
 
 		run_exec(redir_cmd);
