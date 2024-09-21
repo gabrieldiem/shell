@@ -165,7 +165,7 @@ redirect_stream_2_into_file(struct execcmd *exec_cmd)
 		perror("Error: cannot redirect STDERR output into file");
 		close(fd);
 	}
-	//close(fd);
+	// close(fd);
 }
 
 
@@ -245,14 +245,20 @@ exec_cmd(struct cmd *cmd)
 		//
 		redir_cmd = (struct execcmd *) cmd;
 
+		if (should_redirect_output_file(redir_cmd)) {
+			redirect_output_into_file(redir_cmd);
+		}
+
+		if (should_redirect_input_file(redir_cmd)) {
+			redirect_input_into_file(redir_cmd);
+		}
+
+		if (should_redirect_stream_2_into_file(redir_cmd)) {
+			redirect_stream_2_into_file(redir_cmd);
+		}
+
 		if (should_combine_stream_2_into_stream_1(redir_cmd)) {
 			combine_stream_2_into_stream_1();
-		} else if (should_redirect_stream_2_into_file(redir_cmd)) {
-			redirect_stream_2_into_file(redir_cmd);
-		} else if (should_redirect_output_file(redir_cmd)) {
-			redirect_output_into_file(redir_cmd);
-		} else if (should_redirect_input_file(redir_cmd)) {
-			redirect_input_into_file(redir_cmd);
 		}
 
 		run_exec(redir_cmd);

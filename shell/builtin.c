@@ -32,6 +32,9 @@ exit_shell(char *cmd)
 	return EXECUTED;
 }
 
+/*
+ * Returns true if the `cmd` string starts with `CD_CMD_STR`. Returns false otherwise
+ */
 static bool
 is_cd_command(char *cmd)
 {
@@ -51,10 +54,22 @@ is_cd_command(char *cmd)
 	return false;
 }
 
+/*
+ * Returns true if the string `path` has at least a character that is not a
+ * space character. Returns false otherwise
+ */
 static bool
-is_non_empty(char *temp_path)
+is_non_empty(char *path)
 {
-	return true;
+	int max_iter = MIN(PATH_MAX, strlen(path));
+
+	for (int i = 0; i < max_iter; i++) {
+		if (path[i] != SPACE) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 // returns true if "chdir" was performed
