@@ -180,7 +180,9 @@ redirect_output_to_file(struct execcmd *exec_cmd)
 static void
 redirect_input_from_file(struct execcmd *exec_cmd)
 {
-	int fd = open(exec_cmd->in_file, O_RDONLY | O_CLOEXEC);
+	int fd = open(exec_cmd->in_file,
+	              O_RDONLY | O_CLOEXEC,
+	              S_IRUSR | S_IRGRP | S_IROTH);
 	verify_redirection_file(fd);
 
 	int res = dup2(fd, STDIN_FILENO);
@@ -202,7 +204,9 @@ redirect_input_from_file(struct execcmd *exec_cmd)
 static void
 redirect_stream_2_into_file(struct execcmd *exec_cmd)
 {
-	int fd = open(exec_cmd->err_file, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+	int fd = open(exec_cmd->err_file,
+	              O_WRONLY | O_CREAT | O_CLOEXEC,
+	              S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	verify_redirection_file(fd);
 
 	int res = dup2(fd, STDERR_FILENO);
