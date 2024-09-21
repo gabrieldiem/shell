@@ -36,6 +36,9 @@
 #define ARGSIZE 1024
 #define FNAMESIZE 1024
 
+#define HOME_ENV_VAR_KEY "HOME"
+#define GENERIC_ERROR_CODE -1
+
 // command representation after parsed
 #define EXEC 1
 #define BACK 2

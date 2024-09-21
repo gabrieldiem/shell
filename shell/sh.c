@@ -2,6 +2,7 @@
 #include "types.h"
 #include "readline.h"
 #include "runcmd.h"
+#include "updateprompt.h"
 
 char prompt[PRMTLEN] = { 0 };
 
@@ -12,7 +13,7 @@ run_shell()
 	char *cmd;
 
 	while ((cmd = read_line(prompt)) != NULL)
-		if (run_cmd(cmd) == EXIT_SHELL)
+		if (run_cmd(cmd, prompt) == EXIT_SHELL)
 			return;
 }
 
@@ -22,13 +23,13 @@ static void
 init_shell()
 {
 	char buf[BUFLEN] = { 0 };
-	char *home = getenv("HOME");
+	char *home = getenv(HOME_ENV_VAR_KEY);
 
 	if (chdir(home) < 0) {
 		snprintf(buf, sizeof buf, "cannot cd to %s ", home);
 		perror(buf);
 	} else {
-		snprintf(prompt, sizeof prompt, "(%s)", home);
+		update_prompt(prompt, home);
 	}
 }
 

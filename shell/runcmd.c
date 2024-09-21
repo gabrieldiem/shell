@@ -5,7 +5,7 @@ struct cmd *parsed_pipe;
 
 // runs the command in 'cmd'
 int
-run_cmd(char *cmd)
+run_cmd(char *cmd, char *prompt)
 {
 	pid_t p;
 	struct cmd *parsed;
@@ -20,7 +20,7 @@ run_cmd(char *cmd)
 		return 0;
 
 	// "cd" built-in call
-	if (cd(cmd))
+	if (cd(cmd, prompt))
 		return 0;
 
 	// "exit" built-in call
