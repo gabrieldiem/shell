@@ -6,12 +6,16 @@
 
 char prompt[PRMTLEN] = { 0 };
 
-
+/*
+ * Custom handler for SIGCHLD signal. Waits only for child processes from same process group, non-blocking.
+ */
 static void
 sigchild_handler(int signum) {
     pid_t pid; int status;
 
     pid = waitpid(0, &status, WNOHANG);
+
+	// Check: se debería hacer algo con status?
 
 	if (pid > 0) {	
 		printf("==> Process %d exited with status %d.\n", pid, status);
@@ -19,6 +23,9 @@ sigchild_handler(int signum) {
 
 }
 
+/*
+ * Initializes the signal handler for SIGCHLD to custom handler.
+ */
 static void
 initialize_sigchild() {
 	struct sigaction sa;
