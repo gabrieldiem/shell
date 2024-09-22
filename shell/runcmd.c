@@ -42,8 +42,9 @@ run_cmd(char *cmd, char *prompt)
 		if (parsed->type == PIPE)
 			parsed_pipe = parsed;
 
-		// CHECK: El proceso hijo hereda el handling de sigchild, se debería reestablecer el default?
-		// si alguna syscall usa esa señal, imagino que si?
+		// CHECK: El proceso hijo hereda el handling de sigchild, se
+		// debería reestablecer el default? si alguna syscall usa esa
+		// señal, imagino que si?
 
 		exec_cmd(parsed);
 	}
