@@ -42,6 +42,9 @@ run_cmd(char *cmd, char *prompt)
 		if (parsed->type == PIPE)
 			parsed_pipe = parsed;
 
+		// Check: El proceso hijo hereda el handling de sigchild, se debería reestablecer el default?
+		// si alguna syscall usa esa señal, imagino que si?
+
 		exec_cmd(parsed);
 	}
 
@@ -54,8 +57,12 @@ run_cmd(char *cmd, char *prompt)
 	//		going to be run in the 'back'
 	// - print info about it with
 	// 	'print_back_info()'
-	//
-	// Your code here
+
+	if (parsed->type == BACK) {
+		print_back_info(parsed);
+		free_command(parsed);
+		return 0;
+	}
 
 	// waits for the process to finish
 	waitpid(p, &status, 0);

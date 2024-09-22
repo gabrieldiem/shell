@@ -261,9 +261,9 @@ exec_cmd(struct cmd *cmd)
 
 	case BACK: {
 		// runs a command in background
-		//
-		// Your code here
-		printf("Background process are not yet implemented\n");
+		b = (struct backcmd *) cmd;
+		run_exec((struct execcmd *) b->c);
+
 		_exit(EXIT_FAILURE);
 		break;
 	}

@@ -6,6 +6,35 @@
 
 char prompt[PRMTLEN] = { 0 };
 
+
+static void
+sigchild_handler(int signum) {
+    pid_t pid; int status;
+
+    pid = waitpid(0, &status, WNOHANG);
+
+	if (pid > 0) {	
+		printf("==> Process %d exited with status %d.\n", pid, status);
+	}
+
+}
+
+static void
+initialize_sigchild() {
+	struct sigaction sa;
+
+	sa.sa_handler = sigchild_handler;
+	sa.sa_flags = SA_RESTART;
+
+	// TODO: add alternative stack
+
+	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+		perror("sigaction failed");
+		exit(EXIT_FAILURE);
+	}
+}
+
+
 // runs a shell command
 static void
 run_shell()
@@ -31,6 +60,8 @@ init_shell()
 	} else {
 		update_prompt(prompt, home);
 	}
+	setpgid(0, 0);
+	initialize_sigchild();
 }
 
 int
