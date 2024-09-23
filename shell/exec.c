@@ -235,6 +235,9 @@ combine_stream_2_into_stream_1()
 	}
 }
 
+/*
+ * Executes the redirections of the command.
+ */
 static void
 exec_redirections(struct execcmd *redir_cmd)
 {
@@ -282,7 +285,6 @@ exec_cmd(struct cmd *cmd)
 	case BACK: {
 		// runs a command in background
 		b = (struct backcmd *) cmd;
-		// printf(b->c->type);
 		if (b->c->type == REDIR) {
 			redir_cmd = (struct execcmd *) b->c;
 			exec_redirections(redir_cmd);
