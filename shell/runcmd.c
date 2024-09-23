@@ -16,23 +16,23 @@ run_cmd(char *cmd, char *prompt)
 		return 0;
 
 	// "history" built-in call
-	if (history(cmd))
+	if (history(cmd, &status))
 		return 0;
 
 	// "cd" built-in call
-	if (cd(cmd, prompt))
+	if (cd(cmd, prompt, &status))
 		return 0;
 
 	// "exit" built-in call
-	if (exit_shell(cmd))
+	if (exit_shell(cmd, &status))
 		return EXIT_SHELL;
 
 	// "pwd" built-in call
-	if (pwd(cmd))
+	if (pwd(cmd, &status))
 		return 0;
 
 	// parses the command line
-	parsed = parse_line(cmd);
+	parsed = parse_line(cmd, &status);
 
 	// forks and run the command
 	if ((p = fork()) == 0) {

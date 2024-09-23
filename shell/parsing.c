@@ -1,6 +1,7 @@
 #include "parsing.h"
 
 static const char ENVIRON_VAR_KEY = '$';
+static const char EXIT_STATUS_MAGIC_VAR[] = "?";
 
 // parses an argument of the command stream input
 static char *
@@ -104,6 +105,31 @@ is_environ_var(char *arg, int arg_len)
 	return false;
 }
 
+/*
+ * Returns true if `var_name` matches with a magic variable
+ */
+static bool
+is_magic_variable(char *var_name, int var_len)
+{
+	int max_len = MAX(var_len, (int) strlen(EXIT_STATUS_MAGIC_VAR));
+	return strncmp(var_name, EXIT_STATUS_MAGIC_VAR, max_len + 1) == 0;
+}
+
+/*
+ * Fills `magic_var_buff` with the matching magic variable content.
+ * If the magic variable is `EXIT_STATUS_MAGIC_VAR` the content is the last built-in
+ * exit status code.
+ * At last, `environ_var_content` points to `magic_var_buff`
+ */
+static void
+fill_with_magic_variable(char **environ_var_content,
+                         char magic_var_buff[MAGIC_VAR_BUFF_LEN],
+                         int *status)
+{
+	snprintf(magic_var_buff, MAGIC_VAR_BUFF_LEN - 1, "%d", *status);
+	*environ_var_content = magic_var_buff;
+}
+
 // this function will be called for every token, and it should
 // expand environment variables. In other words, if the token
 // happens to start with '$', the correct substitution with the
@@ -118,7 +144,7 @@ is_environ_var(char *arg, int arg_len)
 //		It could be greater than the current size of 'arg'
 //		If that's the case, you should realloc 'arg' to the new size.
 static char *
-expand_environ_var(char *arg, bool *was_expanded)
+expand_environ_var(char *arg, bool *was_expanded, int *status)
 {
 	int arg_len = strlen(arg);
 	if (!is_environ_var(arg, arg_len)) {
@@ -128,7 +154,16 @@ expand_environ_var(char *arg, bool *was_expanded)
 	// Ignore the ENVIRON_VAR_KEY
 	char *environ_var_name = arg + 1;
 
-	char *environ_var_content = getenv(environ_var_name);
+	char *environ_var_content = NULL;
+	char magic_var_buff[MAGIC_VAR_BUFF_LEN] = { END_STRING };
+
+	if (is_magic_variable(environ_var_name, arg_len - 1)) {
+		fill_with_magic_variable(&environ_var_content,
+		                         magic_var_buff,
+		                         status);
+	} else {
+		environ_var_content = getenv(environ_var_name);
+	}
 	*was_expanded = true;
 
 	if (environ_var_content == NULL) {
@@ -169,7 +204,7 @@ expand_environ_var(char *arg, bool *was_expanded)
 // - stdin/stdout/stderr flow changes
 // - environment variables (expand and set)
 static struct cmd *
-parse_exec(char *buf_cmd)
+parse_exec(char *buf_cmd, int *status)
 {
 	struct execcmd *c;
 	char *tok;
@@ -193,7 +228,7 @@ parse_exec(char *buf_cmd)
 		if (parse_environ_var(c, tok))
 			continue;
 
-		tok = expand_environ_var(tok, &was_expanded);
+		tok = expand_environ_var(tok, &was_expanded, status);
 
 		should_index_tok =
 		        !was_expanded || (was_expanded && strlen(tok) > 0);
@@ -210,7 +245,7 @@ parse_exec(char *buf_cmd)
 
 // parses a command knowing that it contains the '&' char
 static struct cmd *
-parse_back(char *buf_cmd)
+parse_back(char *buf_cmd, int *status)
 {
 	int i = 0;
 	struct cmd *e;
@@ -220,7 +255,7 @@ parse_back(char *buf_cmd)
 
 	buf_cmd[i] = END_STRING;
 
-	e = parse_exec(buf_cmd);
+	e = parse_exec(buf_cmd, status);
 
 	return back_cmd_create(e);
 }
@@ -228,7 +263,7 @@ parse_back(char *buf_cmd)
 // parses a command and checks if it contains the '&'
 // (background process) character
 static struct cmd *
-parse_cmd(char *buf_cmd)
+parse_cmd(char *buf_cmd, int *status)
 {
 	if (strlen(buf_cmd) == 0)
 		return NULL;
@@ -239,22 +274,22 @@ parse_cmd(char *buf_cmd)
 	// a redir symbol, in which case
 	// it does not have to run in in the 'back'
 	if ((idx = block_contains(buf_cmd, '&')) >= 0 && buf_cmd[idx - 1] != '>')
-		return parse_back(buf_cmd);
+		return parse_back(buf_cmd, status);
 
-	return parse_exec(buf_cmd);
+	return parse_exec(buf_cmd, status);
 }
 
 // parses the command line
 // looking for the pipe character '|'
 struct cmd *
-parse_line(char *buf)
+parse_line(char *buf, int *status)
 {
 	struct cmd *r, *l;
 
 	char *right = split_line(buf, '|');
 
-	l = parse_cmd(buf);
-	r = parse_cmd(right);
+	l = parse_cmd(buf, status);
+	r = parse_cmd(right, status);
 
 	return pipe_cmd_create(l, r);
 }

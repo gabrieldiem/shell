@@ -38,6 +38,7 @@
 
 #define HOME_ENV_VAR_KEY "HOME"
 #define GENERIC_ERROR_CODE -1
+#define MAGIC_VAR_BUFF_LEN 20
 
 // command representation after parsed
 #define EXEC 1
@@ -50,5 +51,9 @@
 #define WRITE 1
 
 #define EXIT_SHELL 1
+
+/* Macros for min/max.  */
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #endif  // DEFS_H
