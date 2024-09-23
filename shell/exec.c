@@ -53,7 +53,6 @@ get_environ_value(char *arg, char *value, int idx)
 static void
 set_environ_vars(char **eargv, int eargc)
 {
-	printf("eargc %d\n", eargc);
 	for (int i = 0; i < eargc; i++) {
 		int key_value_separator_index =
 		        block_contains(eargv[i], KEY_VALUE_SEPARATOR);
