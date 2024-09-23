@@ -141,7 +141,7 @@ should_combine_stream_2_into_stream_1(struct execcmd *exec_cmd)
  * Delete the file at `filepath`.
  * If deletion fails, an error is printed.
  */
-void
+static void
 unlink_file(char *filepath)
 {
 	int res = unlink(filepath);

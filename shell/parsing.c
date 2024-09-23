@@ -1,5 +1,7 @@
 #include "parsing.h"
 
+static const char ENVIRON_VAR_KEY = '$';
+
 // parses an argument of the command stream input
 static char *
 get_token(char *buf, int idx)
@@ -85,6 +87,23 @@ parse_environ_var(struct execcmd *c, char *arg)
 	return false;
 }
 
+/*
+ * Returns true if `arg` is an environment variable
+ */
+static bool
+is_environ_var(char *arg, int arg_len)
+{
+	if (arg_len == 0) {
+		return false;
+	}
+
+	if (arg[0] == ENVIRON_VAR_KEY) {
+		return true;
+	}
+
+	return false;
+}
+
 // this function will be called for every token, and it should
 // expand environment variables. In other words, if the token
 // happens to start with '$', the correct substitution with the
@@ -99,10 +118,49 @@ parse_environ_var(struct execcmd *c, char *arg)
 //		It could be greater than the current size of 'arg'
 //		If that's the case, you should realloc 'arg' to the new size.
 static char *
-expand_environ_var(char *arg)
+expand_environ_var(char *arg, bool *was_expanded)
 {
-	// Your code here
+	int arg_len = strlen(arg);
+	if (!is_environ_var(arg, arg_len)) {
+		return arg;
+	}
 
+	// Ignore the ENVIRON_VAR_KEY
+	char *environ_var_name = arg + 1;
+
+	char *environ_var_content = getenv(environ_var_name);
+	*was_expanded = true;
+
+	if (environ_var_content == NULL) {
+		arg[0] = END_STRING;
+		return arg;
+	}
+
+	int environ_var_len = strlen(environ_var_content);
+
+	// environ_var_content fits inside arg
+	if (environ_var_len > 0 && environ_var_len < arg_len) {
+		strncpy(arg, environ_var_content, arg_len * sizeof(char) + 1);
+		return arg;
+
+		// environ_var_content does not fit inside arg, thus needing reallocation
+	} else if (environ_var_len > 0 && environ_var_len >= arg_len) {
+		char *temp_buff =
+		        realloc(arg, environ_var_len * sizeof(char) + 2);
+		if (temp_buff == NULL) {
+			perror("Error while allocating memory");
+			exit(EXIT_FAILURE);
+		}
+
+		arg = temp_buff;
+		strncpy(arg,
+		        environ_var_content,
+		        environ_var_len * sizeof(char) + 1);
+		return arg;
+	}
+
+	// environ_var_content is empty
+	arg[0] = END_STRING;
 	return arg;
 }
 
@@ -116,10 +174,13 @@ parse_exec(char *buf_cmd)
 	struct execcmd *c;
 	char *tok;
 	int idx = 0, argc = 0;
+	bool was_expanded = false;
+	bool should_index_tok = true;
 
 	c = (struct execcmd *) exec_cmd_create(buf_cmd);
 
 	while (buf_cmd[idx] != END_STRING) {
+		was_expanded = false;
 		tok = get_token(buf_cmd, idx);
 		idx = idx + strlen(tok);
 
@@ -132,9 +193,13 @@ parse_exec(char *buf_cmd)
 		if (parse_environ_var(c, tok))
 			continue;
 
-		tok = expand_environ_var(tok);
+		tok = expand_environ_var(tok, &was_expanded);
 
-		c->argv[argc++] = tok;
+		should_index_tok =
+		        !was_expanded || (was_expanded && strlen(tok) > 0);
+		if (should_index_tok) {
+			c->argv[argc++] = tok;
+		}
 	}
 
 	c->argv[argc] = (char *) NULL;
