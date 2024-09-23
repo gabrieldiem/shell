@@ -235,6 +235,29 @@ combine_stream_2_into_stream_1()
 	}
 }
 
+/*
+ * Executes the redirections of the command.
+ */
+static void
+exec_redirections(struct execcmd *redir_cmd)
+{
+	if (should_redirect_output_to_file(redir_cmd)) {
+		redirect_output_to_file(redir_cmd);
+	}
+
+	if (should_redirect_input_from_file(redir_cmd)) {
+		redirect_input_from_file(redir_cmd);
+	}
+
+	if (should_redirect_stream_2_into_file(redir_cmd)) {
+		redirect_stream_2_into_file(redir_cmd);
+	}
+
+	if (should_combine_stream_2_into_stream_1(redir_cmd)) {
+		combine_stream_2_into_stream_1();
+	}
+}
+
 // executes a command - does not return
 //
 // Hint:
@@ -262,6 +285,10 @@ exec_cmd(struct cmd *cmd)
 	case BACK: {
 		// runs a command in background
 		b = (struct backcmd *) cmd;
+		if (b->c->type == REDIR) {
+			redir_cmd = (struct execcmd *) b->c;
+			exec_redirections(redir_cmd);
+		}
 		run_exec((struct execcmd *) b->c);
 
 		_exit(EXIT_FAILURE);
@@ -272,21 +299,7 @@ exec_cmd(struct cmd *cmd)
 		// changes the input/output/stderr flow
 		redir_cmd = (struct execcmd *) cmd;
 
-		if (should_redirect_output_to_file(redir_cmd)) {
-			redirect_output_to_file(redir_cmd);
-		}
-
-		if (should_redirect_input_from_file(redir_cmd)) {
-			redirect_input_from_file(redir_cmd);
-		}
-
-		if (should_redirect_stream_2_into_file(redir_cmd)) {
-			redirect_stream_2_into_file(redir_cmd);
-		}
-
-		if (should_combine_stream_2_into_stream_1(redir_cmd)) {
-			combine_stream_2_into_stream_1();
-		}
+		exec_redirections(redir_cmd);
 
 		run_exec(redir_cmd);
 

@@ -46,6 +46,10 @@ run_cmd(char *cmd, char *prompt)
 		// debería reestablecer el default? si alguna syscall usa esa
 		// señal, imagino que si?
 
+		if (parsed->type != BACK) {
+			setpgid(0, 0);
+		}
+
 		exec_cmd(parsed);
 	}
 
