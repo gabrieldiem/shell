@@ -34,10 +34,24 @@ initialize_sigchild()
 	sa.sa_handler = sigchild_handler;
 	sa.sa_flags = SA_RESTART;
 
-	// TODO: add alternative stack
+	stack_t alternative_stack = { .ss_sp = malloc(SIGSTKSZ),
+		                      .ss_size = SIGSTKSZ,
+		                      .ss_flags = 0 };
+
+	if (alternative_stack.ss_sp == NULL) {
+		perror("Malloc for alternative stack failed");
+		exit(EXIT_FAILURE);
+	}
+
+	if (sigaltstack(&alternative_stack, 0) < 0) {
+		perror("Stack change failed");
+		free(alternative_stack.ss_sp);
+		exit(EXIT_FAILURE);
+	};
 
 	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
 		perror("sigaction failed");
+		free(alternative_stack.ss_sp);
 		exit(EXIT_FAILURE);
 	}
 }

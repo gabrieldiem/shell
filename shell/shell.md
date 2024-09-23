@@ -22,7 +22,20 @@ Esta implementación de la shell, en caso de fallar un `exec(3)` (que se ejecuta
 
 ### Procesos en segundo plano
 
----
+#### Explicar detalladamente el mecanismo completo utilizado.
+
+Al inicializar la shell (en sh.c), se utiliza `sigaction` para setear el manejo de la señal SIGCHLD con un handler custom. Este último invoca `waitpid` solamente para aquellos procesos hijos que se ejecutan en segundo plano mediante el process group id. Además, dicho wait se realiza con un flag, `WNOHANG`, que transforma a la operación en no bloqueante, permitiendo así que la shell siga recibiendo comandos del usuario. También imprime por pantalla el pid del proceso finalizado y su estado.
+
+Luego, en cada iteración del ciclo que ejecuta cada comando (runcmd) se verifica si el comando actual es de primer y segundo plano. Para aquellos en primero plano se realiza un wait e imprime el estado, mientras que para los de segundo plano se imprime la información correspondiente con `print_back_info` y no se realiza ningún wait. Esto se debe a que el wait para dichos procesos será aquel implementado en el handler de la shell, como se mencionó anteriormente. De no ser así, la shell se bloquearía esperando a que termine y no se trataría de un proceso en segundo plano.
+
+Los comandos marcados como "BACK" (background process) funcionan correctamente ya sea que posean una redirección de i/o o no, ya que dicha información es verificada con el parámetro "c" del struct backcmd, y se ejecutan las mismas funciones de los casos EXEC y REDIR respectivamente.
+
+Debido a que el handler para SIGCHLD se ejecuta en el espacio de usuario, se utilizó un stack alternativo con `malloc` y `sigaltstack` para evitar bugs.
+
+#### ¿Por qué es necesario el uso de señales?
+
+En el caso de procesos en segundo plano, las señales son necesarias para que el shell sepa cuándo un proceso hijo ha terminado sin bloquear su ejecución. En particular, SIGCHLD se usa para notificar al shell cuando un proceso hijo (en segundo plano) termina.
+Un handler de SIGCHLD permite manejar la señal de manera asíncrona, llamando a waitpid() con la opción WNOHANG para recolectar el estado del proceso terminado sin interrumpir la ejecución del shell. Esto evita procesos zombis y permite que el shell siga aceptando comandos mientras los procesos en segundo plano corren.
 
 ### Flujo estándar
 
