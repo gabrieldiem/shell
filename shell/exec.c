@@ -261,9 +261,9 @@ exec_cmd(struct cmd *cmd)
 {
 	// To be used in the different cases
 	struct execcmd *exec_cmd;
-	struct backcmd *b;
+	struct backcmd *back_cmd;
 	struct execcmd *redir_cmd;
-	struct pipecmd *p;
+	struct pipecmd *pipe_cmd;
 
 	switch (cmd->type) {
 	case EXEC:
@@ -276,12 +276,12 @@ exec_cmd(struct cmd *cmd)
 
 	case BACK: {
 		// runs a command in background
-		b = (struct backcmd *) cmd;
-		if (b->c->type == REDIR) {
-			redir_cmd = (struct execcmd *) b->c;
+		back_cmd = (struct backcmd *) cmd;
+		if (back_cmd->c->type == REDIR) {
+			redir_cmd = (struct execcmd *) back_cmd->c;
 			exec_redirections(redir_cmd);
 		}
-		run_exec((struct execcmd *) b->c);
+		run_exec((struct execcmd *) back_cmd->c);
 
 		_exit(EXIT_FAILURE);
 		break;
@@ -300,7 +300,7 @@ exec_cmd(struct cmd *cmd)
 	}
 
 	case PIPE: {
-		p = (struct pipecmd *) cmd;
+		pipe_cmd = (struct pipecmd *) cmd;
 		int fds[2];
 		int r = pipe(fds);
 		if (r < 0) {
@@ -317,7 +317,7 @@ exec_cmd(struct cmd *cmd)
 			if (dup_left < 0) {
 				_exit(EXIT_FAILURE);
 			}
-			run_exec((struct execcmd *) p->leftcmd);
+			run_exec((struct execcmd *) pipe_cmd->leftcmd);
 			_exit(EXIT_FAILURE);
 		}
 		pid_t pid_right = fork();
@@ -328,7 +328,7 @@ exec_cmd(struct cmd *cmd)
 			if (dup_right < 0) {
 				_exit(EXIT_FAILURE);
 			}
-			run_exec((struct execcmd *) p->rightcmd);
+			run_exec((struct execcmd *) pipe_cmd->rightcmd);
 			_exit(EXIT_FAILURE);
 		} else {
 			close(fds[0]);
@@ -336,7 +336,7 @@ exec_cmd(struct cmd *cmd)
 			wait(&pid_left);
 			wait(&pid_right);
 			_exit(0);
-			// free_command((struct cmd*) p);
+			// free_command((struct cmd*) pipe_cmd);
 		}
 
 
