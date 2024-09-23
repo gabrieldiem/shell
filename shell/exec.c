@@ -2,6 +2,8 @@
 
 static const char STR_COMBINE_STREAM_2_INTO_STREAM_1[] = "&1";
 static const int LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1 = 3;
+static const char KEY_VALUE_SEPARATOR = '=';
+static const int OVERWRITE_TRUE = 1;
 
 // sets "key" with the key part of "arg"
 // and null-terminates it
@@ -51,7 +53,45 @@ get_environ_value(char *arg, char *value, int idx)
 static void
 set_environ_vars(char **eargv, int eargc)
 {
-	// Your code here
+	printf("eargc %d\n", eargc);
+	for (int i = 0; i < eargc; i++) {
+		int key_value_separator_index =
+		        block_contains(eargv[i], KEY_VALUE_SEPARATOR);
+		if (key_value_separator_index == GENERIC_ERROR_CODE) {
+			continue;
+		}
+
+		int environ_var_key_len = strlen(eargv[i]);
+		char *environ_var_key = calloc(environ_var_key_len, sizeof(char));
+		if (environ_var_key == NULL) {
+			perror("Error while allocating memory");
+			continue;
+		}
+
+		char *environ_var_value =
+		        calloc(environ_var_key_len, sizeof(char));
+		if (environ_var_value == NULL) {
+			perror("Error while allocating memory");
+			free(environ_var_key);
+			continue;
+		}
+
+		environ_var_key[0] = END_STRING;
+		environ_var_value[0] = END_STRING;
+
+		get_environ_key(eargv[i], environ_var_key);
+		get_environ_value(eargv[i],
+		                  environ_var_value,
+		                  key_value_separator_index);
+
+		int res =
+		        setenv(environ_var_key, environ_var_value, OVERWRITE_TRUE);
+		if (res == GENERIC_ERROR_CODE) {
+			perror("Error while setting environment variable");
+		}
+		free(environ_var_key);
+		free(environ_var_value);
+	}
 }
 
 // opens the file in which the stdin/stdout/stderr
@@ -86,6 +126,7 @@ run_exec(struct execcmd *exec_cmd)
 		execvp_buff[i] = exec_cmd->argv[i];
 	}
 
+	set_environ_vars(exec_cmd->eargv, exec_cmd->eargc);
 	execvp(exec_cmd->argv[0], execvp_buff);
 	perror("Error on exec");
 }

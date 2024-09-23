@@ -29,7 +29,7 @@ block_contains(char *buf, char c)
 		if (buf[i] == c)
 			return i;
 
-	return -1;
+	return GENERIC_ERROR_CODE;
 }
 
 // Printf wrappers for debug purposes so that they don't
