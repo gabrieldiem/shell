@@ -11,7 +11,7 @@ char prompt[PRMTLEN] = { 0 };
  * process group, non-blocking.
  */
 static void
-sigchild_handler(int signum)
+sigchild_handler(int /*signum*/)
 {
 	pid_t pid;
 	int status;
