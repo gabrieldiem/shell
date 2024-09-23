@@ -65,11 +65,16 @@ set_environ_vars(char **eargv, int eargc)
 // - if O_CREAT is used, add S_IWUSR and S_IRUSR
 // 	to make it a readable normal file
 static int
-open_redir_fd(char *file, int flags)
+open_redir_fd(char *file, int flags, int perms)
 {
-	// Your code here
+	int fd = open(file, flags, perms);
 
-	return -1;
+	if (fd == GENERIC_ERROR_CODE) {
+		perror("Error: cannot open redirection file");
+		_exit(EXIT_FAILURE);
+	}
+
+	return fd;
 }
 
 static void
@@ -83,16 +88,6 @@ run_exec(struct execcmd *exec_cmd)
 
 	execvp(exec_cmd->argv[0], execvp_buff);
 	perror("Error on exec");
-}
-
-static void
-verify_redirection_file(int fd)
-{
-	if (fd == GENERIC_ERROR_CODE) {
-		perror("Error: cannot open redirection file");
-		// CHEQUEAR
-		_exit(EXIT_FAILURE);
-	}
 }
 
 /*
@@ -157,10 +152,9 @@ unlink_file(char *filepath)
 static void
 redirect_output_to_file(struct execcmd *exec_cmd)
 {
-	int fd = open(exec_cmd->out_file,
-	              O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
-	              S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	verify_redirection_file(fd);
+	int fd = open_redir_fd(exec_cmd->out_file,
+	                       O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+	                       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	int res = dup2(fd, STDOUT_FILENO);
 	if (res == GENERIC_ERROR_CODE) {
@@ -180,10 +174,9 @@ redirect_output_to_file(struct execcmd *exec_cmd)
 static void
 redirect_input_from_file(struct execcmd *exec_cmd)
 {
-	int fd = open(exec_cmd->in_file,
-	              O_RDONLY | O_CLOEXEC,
-	              S_IRUSR | S_IRGRP | S_IROTH);
-	verify_redirection_file(fd);
+	int fd = open_redir_fd(exec_cmd->in_file,
+	                       O_RDONLY | O_CLOEXEC,
+	                       S_IRUSR | S_IRGRP | S_IROTH);
 
 	int res = dup2(fd, STDIN_FILENO);
 	if (res == GENERIC_ERROR_CODE) {
@@ -204,10 +197,9 @@ redirect_input_from_file(struct execcmd *exec_cmd)
 static void
 redirect_stream_2_into_file(struct execcmd *exec_cmd)
 {
-	int fd = open(exec_cmd->err_file,
-	              O_WRONLY | O_CREAT | O_CLOEXEC,
-	              S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	verify_redirection_file(fd);
+	int fd = open_redir_fd(exec_cmd->err_file,
+	                       O_WRONLY | O_CREAT | O_CLOEXEC,
+	                       S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	int res = dup2(fd, STDERR_FILENO);
 	if (res == GENERIC_ERROR_CODE) {
