@@ -1,5 +1,7 @@
 #include "exec.h"
 
+#include "parsing.h"
+
 static const char STR_COMBINE_STREAM_2_INTO_STREAM_1[] = "&1";
 static const int LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1 = 3;
 static const char KEY_VALUE_SEPARATOR = '=';
@@ -13,6 +15,7 @@ static const int OVERWRITE_TRUE = 1;
 //  arg = ['K', 'E', 'Y', '=', 'v', 'a', 'l', 'u', 'e', '\0']
 //  key = "KEY"
 //
+
 static void
 get_environ_key(char *arg, char *key)
 {
@@ -290,6 +293,20 @@ exec_redirections(struct execcmd *redir_cmd)
 	}
 }
 
+/* fd_unused and fd_used are both ends of the same pipe.
+ */
+static void
+redirect_stream_to_pipe(int fd_unused, int fd_used, int stream)
+{
+	close(fd_unused);
+	int dup = dup2(fd_used, stream);
+	close(fd_used);
+	if (dup < 0) {
+		_exit(EXIT_FAILURE);
+	}
+}
+
+
 // executes a command - does not return
 //
 // Hint:
@@ -300,7 +317,7 @@ void
 exec_cmd(struct cmd *cmd)
 {
 	// To be used in the different cases
-	struct execcmd *exec_cmd;
+	struct execcmd *e_cmd;
 	struct backcmd *back_cmd;
 	struct execcmd *redir_cmd;
 	struct pipecmd *pipe_cmd;
@@ -308,8 +325,8 @@ exec_cmd(struct cmd *cmd)
 	switch (cmd->type) {
 	case EXEC:
 		// spawns a command
-		exec_cmd = (struct execcmd *) cmd;
-		run_exec(exec_cmd);
+		e_cmd = (struct execcmd *) cmd;
+		run_exec(e_cmd);
 
 		_exit(EXIT_FAILURE);
 		break;
@@ -349,41 +366,25 @@ exec_cmd(struct cmd *cmd)
 
 		pid_t pid_left = fork();
 
-
 		if (pid_left == 0) {
-			close(fds[0]);
-			int dup_left = dup2(fds[1], STDOUT_FILENO);
-			close(fds[1]);
-			if (dup_left < 0) {
-				_exit(EXIT_FAILURE);
-			}
+			redirect_stream_to_pipe(fds[0], fds[1], STDOUT_FILENO);
 			run_exec((struct execcmd *) pipe_cmd->leftcmd);
 			_exit(EXIT_FAILURE);
 		}
+
 		pid_t pid_right = fork();
+
 		if (pid_right == 0) {
-			close(fds[1]);
-			int dup_right = dup2(fds[0], STDIN_FILENO);
-			close(fds[0]);
-			if (dup_right < 0) {
-				_exit(EXIT_FAILURE);
-			}
-			run_exec((struct execcmd *) pipe_cmd->rightcmd);
-			_exit(EXIT_FAILURE);
-		} else {
-			close(fds[0]);
-			close(fds[1]);
-			wait(&pid_left);
-			wait(&pid_right);
-			_exit(0);
-			// free_command((struct cmd*) pipe_cmd);
+			redirect_stream_to_pipe(fds[1], fds[0], STDIN_FILENO);
+			struct cmd* parsed_right = parse_line(pipe_cmd->rightcmd->scmd, 0);
+			exec_cmd(parsed_right);
 		}
 
-
-		// free the memory allocated
-		// for the pipe tree structure
-
-
+		close(fds[0]);
+		close(fds[1]);
+		wait(NULL);
+		wait(NULL);
+		_exit(0);
 		break;
 	}
 	}
