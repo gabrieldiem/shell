@@ -376,7 +376,8 @@ exec_cmd(struct cmd *cmd)
 
 		if (pid_right == 0) {
 			redirect_stream_to_pipe(fds[1], fds[0], STDIN_FILENO);
-			struct cmd* parsed_right = parse_line(pipe_cmd->rightcmd->scmd, 0);
+			struct cmd *parsed_right =
+			        parse_line(pipe_cmd->rightcmd->scmd, 0);
 			exec_cmd(parsed_right);
 		}
 
