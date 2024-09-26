@@ -8,6 +8,6 @@
 
 extern struct cmd *parsed_pipe;
 
-void exec_cmd(struct cmd *c);
+void exec_cmd(struct cmd *c, int *status);
 
 #endif  // EXEC_H

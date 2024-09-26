@@ -7,6 +7,8 @@ static const int LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1 = 3;
 static const char KEY_VALUE_SEPARATOR = '=';
 static const int OVERWRITE_TRUE = 1;
 
+static const int PIPE_SIZE_VECTOR = 2, READ_SIDE = 0, WRITE_SIDE = 1;
+
 // sets "key" with the key part of "arg"
 // and null-terminates it
 //
@@ -131,6 +133,7 @@ run_exec(struct execcmd *exec_cmd)
 	set_environ_vars(exec_cmd->eargv, exec_cmd->eargc);
 	execvp(exec_cmd->argv[0], execvp_buff);
 	perror("Error on exec");
+	_exit(EXIT_FAILURE);
 }
 
 /*
@@ -299,9 +302,11 @@ static void
 redirect_stream_to_pipe(int fd_unused, int fd_used, int stream)
 {
 	close(fd_unused);
-	int dup = dup2(fd_used, stream);
+	int res = dup2(fd_used, stream);
 	close(fd_used);
-	if (dup < 0) {
+
+	if (res == GENERIC_ERROR_CODE) {
+		perror("Error: cannot redirect stream for pipe");
 		_exit(EXIT_FAILURE);
 	}
 }
@@ -314,7 +319,7 @@ redirect_stream_to_pipe(int fd_unused, int fd_used, int stream)
 // 	in types.h
 // - casting could be a good option
 void
-exec_cmd(struct cmd *cmd)
+exec_cmd(struct cmd *cmd, int *status)
 {
 	// To be used in the different cases
 	struct execcmd *e_cmd;
@@ -327,8 +332,6 @@ exec_cmd(struct cmd *cmd)
 		// spawns a command
 		e_cmd = (struct execcmd *) cmd;
 		run_exec(e_cmd);
-
-		_exit(EXIT_FAILURE);
 		break;
 
 	case BACK: {
@@ -339,8 +342,6 @@ exec_cmd(struct cmd *cmd)
 			exec_redirections(redir_cmd);
 		}
 		run_exec((struct execcmd *) back_cmd->c);
-
-		_exit(EXIT_FAILURE);
 		break;
 	}
 
@@ -351,41 +352,43 @@ exec_cmd(struct cmd *cmd)
 		exec_redirections(redir_cmd);
 
 		run_exec(redir_cmd);
-
-		_exit(EXIT_FAILURE);
 		break;
 	}
 
 	case PIPE: {
 		pipe_cmd = (struct pipecmd *) cmd;
-		int fds[2];
-		int r = pipe(fds);
-		if (r < 0) {
+		int fds[PIPE_SIZE_VECTOR];
+		int res = pipe(fds);
+		if (res == GENERIC_ERROR_CODE) {
+			perror("Error while creating pipe");
 			_exit(EXIT_FAILURE);
 		}
 
 		pid_t pid_left = fork();
 
 		if (pid_left == 0) {
-			redirect_stream_to_pipe(fds[0], fds[1], STDOUT_FILENO);
+			redirect_stream_to_pipe(fds[READ_SIDE],
+			                        fds[WRITE_SIDE],
+			                        STDOUT_FILENO);
 			run_exec((struct execcmd *) pipe_cmd->leftcmd);
-			_exit(EXIT_FAILURE);
 		}
 
 		pid_t pid_right = fork();
 
 		if (pid_right == 0) {
-			redirect_stream_to_pipe(fds[1], fds[0], STDIN_FILENO);
+			redirect_stream_to_pipe(fds[WRITE_SIDE],
+			                        fds[READ_SIDE],
+			                        STDIN_FILENO);
 			struct cmd *parsed_right =
-			        parse_line(pipe_cmd->rightcmd->scmd, 0);
-			exec_cmd(parsed_right);
+			        parse_line(pipe_cmd->rightcmd->scmd, status);
+			exec_cmd(parsed_right, status);
 		}
 
-		close(fds[0]);
-		close(fds[1]);
+		close(fds[READ_SIDE]);
+		close(fds[WRITE_SIDE]);
 		wait(NULL);
 		wait(NULL);
-		_exit(0);
+		_exit(EXIT_SUCCESS);
 		break;
 	}
 	}
