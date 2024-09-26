@@ -381,13 +381,16 @@ exec_cmd(struct cmd *cmd, int *status)
 			                        STDIN_FILENO);
 			struct cmd *parsed_right =
 			        parse_line(pipe_cmd->rightcmd->scmd, status);
-			exec_cmd(parsed_right, status);
+			free_command(pipe_cmd->rightcmd);
+			pipe_cmd->rightcmd = parsed_right;
+			exec_cmd(pipe_cmd->rightcmd, status);
 		}
 
 		close(fds[READ_SIDE]);
 		close(fds[WRITE_SIDE]);
 		wait(NULL);
 		wait(NULL);
+		free_command(parsed_pipe);
 		_exit(EXIT_SUCCESS);
 		break;
 	}
