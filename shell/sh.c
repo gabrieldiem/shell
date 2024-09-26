@@ -7,6 +7,18 @@
 char prompt[PRMTLEN] = { 0 };
 
 /*
+ * Frees the alternative stack memory.
+ */
+static void
+free_alternative_stack(stack_t *alternative_stack)
+{
+	if (alternative_stack->ss_sp != NULL) {
+		free(alternative_stack->ss_sp);
+		alternative_stack->ss_sp = NULL;
+	}
+}
+
+/*
  * Custom handler for SIGCHLD signal. Waits only for child processes from same
  * process group, non-blocking.
  */
@@ -27,31 +39,22 @@ sigchild_handler(int /*signum*/)
  * Initializes the signal handler for SIGCHLD to custom handler.
  */
 static void
-initialize_sigchild()
+initialize_sigchild(stack_t *alternative_stack)
 {
 	struct sigaction sa;
 
 	sa.sa_handler = sigchild_handler;
 	sa.sa_flags = SA_RESTART;
 
-	stack_t alternative_stack = { .ss_sp = malloc(SIGSTKSZ),
-		                      .ss_size = SIGSTKSZ,
-		                      .ss_flags = 0 };
-
-	if (alternative_stack.ss_sp == NULL) {
-		perror("Malloc for alternative stack failed");
-		exit(EXIT_FAILURE);
-	}
-
-	if (sigaltstack(&alternative_stack, 0) < 0) {
+	if (sigaltstack(alternative_stack, 0) < 0) {
 		perror("Stack change failed");
-		free(alternative_stack.ss_sp);
+		free_alternative_stack(alternative_stack);
 		exit(EXIT_FAILURE);
 	};
 
 	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-		perror("sigaction failed");
-		free(alternative_stack.ss_sp);
+		perror("Sigaction failed");
+		free_alternative_stack(alternative_stack);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -59,19 +62,22 @@ initialize_sigchild()
 
 // runs a shell command
 static void
-run_shell()
+run_shell(stack_t *alternative_stack)
 {
 	char *cmd;
 
 	while ((cmd = read_line(prompt)) != NULL)
-		if (run_cmd(cmd, prompt) == EXIT_SHELL)
+		if (run_cmd(cmd, prompt) == EXIT_SHELL) {
+			free_alternative_stack(alternative_stack);
 			return;
+		}
+	free_alternative_stack(alternative_stack);
 }
 
 // initializes the shell
 // with the "HOME" directory
 static void
-init_shell()
+init_shell(stack_t *alternative_stack)
 {
 	char buf[BUFLEN] = { 0 };
 	char *home = getenv(HOME_ENV_VAR_KEY);
@@ -83,15 +89,24 @@ init_shell()
 		update_prompt(prompt, home);
 	}
 	setpgid(0, 0);
-	initialize_sigchild();
+	initialize_sigchild(alternative_stack);
 }
 
 int
 main(void)
 {
-	init_shell();
+	stack_t alternative_stack = { .ss_sp = malloc(SIGSTKSZ),
+		                      .ss_size = SIGSTKSZ,
+		                      .ss_flags = 0 };
 
-	run_shell();
+	if (alternative_stack.ss_sp == NULL) {
+		perror("Malloc for alternative stack failed");
+		exit(EXIT_FAILURE);
+	}
+
+	init_shell(&alternative_stack);
+
+	run_shell(&alternative_stack);
 
 	return 0;
 }
