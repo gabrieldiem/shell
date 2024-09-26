@@ -50,7 +50,7 @@ run_cmd(char *cmd, char *prompt)
 			setpgid(0, 0);
 		}
 
-		exec_cmd(parsed);
+		exec_cmd(parsed, &status);
 	}
 
 	// stores the pid of the process
