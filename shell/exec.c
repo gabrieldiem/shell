@@ -122,7 +122,7 @@ open_redir_fd(char *file, int flags, int perms)
 }
 
 static void
-run_exec(struct execcmd *exec_cmd)
+run_exec(struct execcmd *exec_cmd, stack_t *signal_alt_stack)
 {
 	char *execvp_buff[MAXARGS + 1] = { NULL };
 
@@ -132,6 +132,8 @@ run_exec(struct execcmd *exec_cmd)
 
 	set_environ_vars(exec_cmd->eargv, exec_cmd->eargc);
 	execvp(exec_cmd->argv[0], execvp_buff);
+	free_command((struct cmd *) exec_cmd);
+	free_alternative_stack(signal_alt_stack);
 	perror("Error on exec");
 	_exit(EXIT_FAILURE);
 }
@@ -385,7 +387,7 @@ exec_cmd(struct cmd *cmd, stack_t *signal_alt_stack)
 	case EXEC:
 		// spawns a command
 		e_cmd = (struct execcmd *) cmd;
-		run_exec(e_cmd);
+		run_exec(e_cmd, signal_alt_stack);
 		break;
 
 	case BACK: {
@@ -399,7 +401,7 @@ exec_cmd(struct cmd *cmd, stack_t *signal_alt_stack)
 		// changes the input/output/stderr flow
 		redir_cmd = (struct execcmd *) cmd;
 		exec_redirections(redir_cmd);
-		run_exec(redir_cmd);
+		run_exec(redir_cmd, signal_alt_stack);
 		break;
 	}
 
