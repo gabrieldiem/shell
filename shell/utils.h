@@ -10,4 +10,6 @@ int block_contains(char *buf, char c);
 int printf_debug(char *format, ...);
 int fprintf_debug(FILE *file, char *format, ...);
 
+int parse_exit_code(int raw_exit_code);
+
 #endif  // UTILS_H

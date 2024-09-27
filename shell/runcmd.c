@@ -72,10 +72,12 @@ run_cmd(char *cmd, char *prompt)
 
 	// waits for the process to finish
 	waitpid(_pid, &status, NO_OPTIONS);
+	int exit_code = parse_exit_code(status);
 
 	print_status_info(parsed);
 
 	free_command(parsed);
 
+	status = exit_code;
 	return 0;
 }

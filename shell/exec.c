@@ -313,7 +313,7 @@ redirect_stream_to_pipe(int fd_unused, int fd_used, int stream)
 }
 
 
-static void
+static int
 handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
 {
 	int fds[PIPE_SIZE_VECTOR];
@@ -352,14 +352,18 @@ handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
 	close(fds[READ_SIDE]);
 	close(fds[WRITE_SIDE]);
 
+	int exit_code = EXIT_SUCCESS;
+
 	if (waitpid(pid_left, &status, NO_OPTIONS) != GENERIC_ERROR_CODE) {
 		print_status_info(pipe_cmd->leftcmd);
 	}
 
 	if (waitpid(pid_right, &status, NO_OPTIONS) != GENERIC_ERROR_CODE &&
 	    pipe_cmd->rightcmd->type != PIPE) {
+		exit_code = status;
 		print_status_info(pipe_cmd->rightcmd);
 	}
+	return exit_code;
 }
 
 // executes a command - does not return
@@ -402,11 +406,11 @@ exec_cmd(struct cmd *cmd)
 	case PIPE: {
 		// pipes two commands
 		pipe_cmd = (struct pipecmd *) cmd;
-		handle_pipe_cmd_flow(pipe_cmd);
+		int res = handle_pipe_cmd_flow(pipe_cmd);
 		// free the memory allocated
 		// for the pipe tree structure
 		free_command(parsed_pipe);
-		_exit(EXIT_SUCCESS);
+		_exit(parse_exit_code(res));
 		break;
 	}
 	}

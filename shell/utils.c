@@ -63,3 +63,17 @@ fprintf_debug(FILE *file, char *format, ...)
 	return 0;
 #endif
 }
+
+int
+parse_exit_code(int raw_exit_code)
+{
+	int parsed = raw_exit_code;
+	if (WIFEXITED(raw_exit_code)) {
+		parsed = WEXITSTATUS(raw_exit_code);
+	} else if (WIFSIGNALED(raw_exit_code)) {
+		parsed = -WTERMSIG(raw_exit_code);
+	} else if (WTERMSIG(raw_exit_code)) {
+		parsed = -WSTOPSIG(raw_exit_code);
+	}
+	return parsed;
+}
