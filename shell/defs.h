@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -39,6 +40,10 @@
 #define HOME_ENV_VAR_KEY "HOME"
 #define GENERIC_ERROR_CODE -1
 #define MAGIC_VAR_BUFF_LEN 20
+
+#define USE_PID_OF_THIS_PROCESS 0
+#define SET_GPID_SAME_AS_PID_OF_THIS_PROCESS 0
+#define NO_OPTIONS 0
 
 // command representation after parsed
 #define EXEC 1

@@ -1,6 +1,7 @@
 #include "exec.h"
 
 #include "parsing.h"
+#include "printstatus.h"
 
 static const char STR_COMBINE_STREAM_2_INTO_STREAM_1[] = "&1";
 static const int LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1 = 3;
@@ -319,7 +320,7 @@ redirect_stream_to_pipe(int fd_unused, int fd_used, int stream)
 // 	in types.h
 // - casting could be a good option
 void
-exec_cmd(struct cmd *cmd, int *status)
+exec_cmd(struct cmd *cmd)
 {
 	// To be used in the different cases
 	struct execcmd *e_cmd;
@@ -367,29 +368,42 @@ exec_cmd(struct cmd *cmd, int *status)
 		pid_t pid_left = fork();
 
 		if (pid_left == 0) {
+			setpgid(USE_PID_OF_THIS_PROCESS,
+			        SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
 			redirect_stream_to_pipe(fds[READ_SIDE],
 			                        fds[WRITE_SIDE],
 			                        STDOUT_FILENO);
-			run_exec((struct execcmd *) pipe_cmd->leftcmd);
+			exec_cmd(pipe_cmd->leftcmd);
 		}
+
+		struct cmd *parsed_right =
+		        parse_line(pipe_cmd->rightcmd->scmd, &status);
+		free_command(pipe_cmd->rightcmd);
+		pipe_cmd->rightcmd = parsed_right;
 
 		pid_t pid_right = fork();
 
 		if (pid_right == 0) {
+			setpgid(USE_PID_OF_THIS_PROCESS,
+			        SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
 			redirect_stream_to_pipe(fds[WRITE_SIDE],
 			                        fds[READ_SIDE],
 			                        STDIN_FILENO);
-			struct cmd *parsed_right =
-			        parse_line(pipe_cmd->rightcmd->scmd, status);
-			free_command(pipe_cmd->rightcmd);
-			pipe_cmd->rightcmd = parsed_right;
-			exec_cmd(pipe_cmd->rightcmd, status);
+			exec_cmd(pipe_cmd->rightcmd);
 		}
 
 		close(fds[READ_SIDE]);
 		close(fds[WRITE_SIDE]);
-		wait(NULL);
-		wait(NULL);
+
+		if (waitpid(pid_left, &status, NO_OPTIONS) != GENERIC_ERROR_CODE) {
+			print_status_info(pipe_cmd->leftcmd);
+		}
+
+		if (waitpid(pid_right, &status, NO_OPTIONS) != GENERIC_ERROR_CODE &&
+		    pipe_cmd->rightcmd->type != PIPE) {
+			print_status_info(pipe_cmd->rightcmd);
+		}
+
 		free_command(parsed_pipe);
 		_exit(EXIT_SUCCESS);
 		break;

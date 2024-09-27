@@ -7,7 +7,7 @@ struct cmd *parsed_pipe;
 int
 run_cmd(char *cmd, char *prompt)
 {
-	pid_t p;
+	pid_t _pid;
 	struct cmd *parsed;
 
 	// if the "enter" key is pressed
@@ -35,7 +35,7 @@ run_cmd(char *cmd, char *prompt)
 	parsed = parse_line(cmd, &status);
 
 	// forks and run the command
-	if ((p = fork()) == 0) {
+	if ((_pid = fork()) == 0) {
 		// keep a reference
 		// to the parsed pipe cmd
 		// so it can be freed later
@@ -47,14 +47,15 @@ run_cmd(char *cmd, char *prompt)
 		// señal, imagino que si?
 
 		if (parsed->type != BACK) {
-			setpgid(0, 0);
+			setpgid(USE_PID_OF_THIS_PROCESS,
+			        SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
 		}
 
-		exec_cmd(parsed, &status);
+		exec_cmd(parsed);
 	}
 
 	// stores the pid of the process
-	parsed->pid = p;
+	parsed->pid = _pid;
 
 	// background process special treatment
 	// Hint:
@@ -70,7 +71,7 @@ run_cmd(char *cmd, char *prompt)
 	}
 
 	// waits for the process to finish
-	waitpid(p, &status, 0);
+	waitpid(_pid, &status, NO_OPTIONS);
 
 	print_status_info(parsed);
 
