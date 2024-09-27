@@ -313,7 +313,7 @@ redirect_stream_to_pipe(int fd_unused, int fd_used, int stream)
 }
 
 
-void
+static void
 handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
 {
 	int fds[PIPE_SIZE_VECTOR];
@@ -400,8 +400,11 @@ exec_cmd(struct cmd *cmd)
 	}
 
 	case PIPE: {
+		// pipes two commands
 		pipe_cmd = (struct pipecmd *) cmd;
 		handle_pipe_cmd_flow(pipe_cmd);
+		// free the memory allocated
+		// for the pipe tree structure
 		free_command(parsed_pipe);
 		_exit(EXIT_SUCCESS);
 		break;
