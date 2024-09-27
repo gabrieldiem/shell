@@ -313,6 +313,55 @@ redirect_stream_to_pipe(int fd_unused, int fd_used, int stream)
 }
 
 
+void
+handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
+{
+	int fds[PIPE_SIZE_VECTOR];
+	int res = pipe(fds);
+	if (res == GENERIC_ERROR_CODE) {
+		perror("Error while creating pipe");
+		_exit(EXIT_FAILURE);
+	}
+
+	pid_t pid_left = fork();
+
+	if (pid_left == 0) {
+		setpgid(USE_PID_OF_THIS_PROCESS,
+		        SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
+		redirect_stream_to_pipe(fds[READ_SIDE],
+		                        fds[WRITE_SIDE],
+		                        STDOUT_FILENO);
+		exec_cmd(pipe_cmd->leftcmd);
+	}
+
+	struct cmd *parsed_right = parse_line(pipe_cmd->rightcmd->scmd, &status);
+	free_command(pipe_cmd->rightcmd);
+	pipe_cmd->rightcmd = parsed_right;
+
+	pid_t pid_right = fork();
+
+	if (pid_right == 0) {
+		setpgid(USE_PID_OF_THIS_PROCESS,
+		        SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
+		redirect_stream_to_pipe(fds[WRITE_SIDE],
+		                        fds[READ_SIDE],
+		                        STDIN_FILENO);
+		exec_cmd(pipe_cmd->rightcmd);
+	}
+
+	close(fds[READ_SIDE]);
+	close(fds[WRITE_SIDE]);
+
+	if (waitpid(pid_left, &status, NO_OPTIONS) != GENERIC_ERROR_CODE) {
+		print_status_info(pipe_cmd->leftcmd);
+	}
+
+	if (waitpid(pid_right, &status, NO_OPTIONS) != GENERIC_ERROR_CODE &&
+	    pipe_cmd->rightcmd->type != PIPE) {
+		print_status_info(pipe_cmd->rightcmd);
+	}
+}
+
 // executes a command - does not return
 //
 // Hint:
@@ -338,72 +387,21 @@ exec_cmd(struct cmd *cmd)
 	case BACK: {
 		// runs a command in background
 		back_cmd = (struct backcmd *) cmd;
-		if (back_cmd->c->type == REDIR) {
-			redir_cmd = (struct execcmd *) back_cmd->c;
-			exec_redirections(redir_cmd);
-		}
-		run_exec((struct execcmd *) back_cmd->c);
+		exec_cmd(back_cmd->c);
 		break;
 	}
 
 	case REDIR: {
 		// changes the input/output/stderr flow
 		redir_cmd = (struct execcmd *) cmd;
-
 		exec_redirections(redir_cmd);
-
 		run_exec(redir_cmd);
 		break;
 	}
 
 	case PIPE: {
 		pipe_cmd = (struct pipecmd *) cmd;
-		int fds[PIPE_SIZE_VECTOR];
-		int res = pipe(fds);
-		if (res == GENERIC_ERROR_CODE) {
-			perror("Error while creating pipe");
-			_exit(EXIT_FAILURE);
-		}
-
-		pid_t pid_left = fork();
-
-		if (pid_left == 0) {
-			setpgid(USE_PID_OF_THIS_PROCESS,
-			        SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
-			redirect_stream_to_pipe(fds[READ_SIDE],
-			                        fds[WRITE_SIDE],
-			                        STDOUT_FILENO);
-			exec_cmd(pipe_cmd->leftcmd);
-		}
-
-		struct cmd *parsed_right =
-		        parse_line(pipe_cmd->rightcmd->scmd, &status);
-		free_command(pipe_cmd->rightcmd);
-		pipe_cmd->rightcmd = parsed_right;
-
-		pid_t pid_right = fork();
-
-		if (pid_right == 0) {
-			setpgid(USE_PID_OF_THIS_PROCESS,
-			        SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
-			redirect_stream_to_pipe(fds[WRITE_SIDE],
-			                        fds[READ_SIDE],
-			                        STDIN_FILENO);
-			exec_cmd(pipe_cmd->rightcmd);
-		}
-
-		close(fds[READ_SIDE]);
-		close(fds[WRITE_SIDE]);
-
-		if (waitpid(pid_left, &status, NO_OPTIONS) != GENERIC_ERROR_CODE) {
-			print_status_info(pipe_cmd->leftcmd);
-		}
-
-		if (waitpid(pid_right, &status, NO_OPTIONS) != GENERIC_ERROR_CODE &&
-		    pipe_cmd->rightcmd->type != PIPE) {
-			print_status_info(pipe_cmd->rightcmd);
-		}
-
+		handle_pipe_cmd_flow(pipe_cmd);
 		free_command(parsed_pipe);
 		_exit(EXIT_SUCCESS);
 		break;
