@@ -164,5 +164,7 @@ int
 history(char *cmd, int *status)
 {
 	// Your code here
+	MARK_UNUSED(cmd);
+	MARK_UNUSED(status);
 	return NOT_EXECUTED;
 }
