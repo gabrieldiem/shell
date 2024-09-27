@@ -358,10 +358,11 @@ handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
 		print_status_info(pipe_cmd->leftcmd);
 	}
 
-	if (waitpid(pid_right, &status, NO_OPTIONS) != GENERIC_ERROR_CODE &&
-	    pipe_cmd->rightcmd->type != PIPE) {
+	if (waitpid(pid_right, &status, NO_OPTIONS) != GENERIC_ERROR_CODE) {
 		exit_code = status;
-		print_status_info(pipe_cmd->rightcmd);
+		if (pipe_cmd->rightcmd->type != PIPE) {
+			print_status_info(pipe_cmd->rightcmd);
+		}
 	}
 	return exit_code;
 }
