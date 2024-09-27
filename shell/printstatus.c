@@ -34,6 +34,9 @@ print_status_info(struct cmd *cmd)
 		        status,
 		        COLOR_RESET);
 	}
+#else
+	MARK_UNUSED(action);
+	MARK_UNUSED(cmd);
 #endif
 }
 
@@ -67,6 +70,10 @@ print_status_info_from_pid(int pid, int _status)
 		        _status,
 		        COLOR_RESET);
 	}
+#else
+	MARK_UNUSED(action);
+	MARK_UNUSED(pid);
+	MARK_UNUSED(_status);
 #endif
 }
 
@@ -78,5 +85,7 @@ print_back_info(struct cmd *back)
 	if (isatty(1)) {
 		fprintf(stdout, "%s  [PID=%d] %s\n", COLOR_BLUE, back->pid, COLOR_RESET);
 	}
+#else
+	MARK_UNUSED(back);
 #endif
 }

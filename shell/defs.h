@@ -27,6 +27,12 @@
 #define COLOR_RESET ""
 #endif
 
+#ifdef SHELL_NO_INTERACTIVE
+#define MARK_UNUSED(parameter) (void) (parameter)
+#else
+#define MARK_UNUSED(parameter)
+#endif
+
 #define END_STRING '\0'
 #define END_LINE '\n'
 #define SPACE ' '
@@ -52,8 +58,9 @@
 #define PIPE 4
 
 // fd numbers for pipes
-#define READ 0
-#define WRITE 1
+#define READ_SIDE 0
+#define WRITE_SIDE 1
+#define PIPE_SIZE_VECTOR 2
 
 #define EXIT_SHELL 1
 

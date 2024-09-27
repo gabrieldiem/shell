@@ -9,6 +9,6 @@
 extern struct cmd *parsed_pipe;
 extern int status;
 
-void exec_cmd(struct cmd *c);
+void exec_cmd(struct cmd *c, stack_t *signal_alt_stack);
 
 #endif  // EXEC_H

@@ -2,13 +2,12 @@
 
 #include "parsing.h"
 #include "printstatus.h"
+#include "altstack.h"
 
 static const char STR_COMBINE_STREAM_2_INTO_STREAM_1[] = "&1";
 static const int LEN_STR_COMBINE_STREAM_2_INTO_STREAM_1 = 3;
 static const char KEY_VALUE_SEPARATOR = '=';
 static const int OVERWRITE_TRUE = 1;
-
-static const int PIPE_SIZE_VECTOR = 2, READ_SIDE = 0, WRITE_SIDE = 1;
 
 // sets "key" with the key part of "arg"
 // and null-terminates it
@@ -314,7 +313,7 @@ redirect_stream_to_pipe(int fd_unused, int fd_used, int stream)
 
 
 static int
-handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
+handle_pipe_cmd_flow(struct pipecmd *pipe_cmd, stack_t *signal_alt_stack)
 {
 	int fds[PIPE_SIZE_VECTOR];
 	int res = pipe(fds);
@@ -331,7 +330,7 @@ handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
 		redirect_stream_to_pipe(fds[READ_SIDE],
 		                        fds[WRITE_SIDE],
 		                        STDOUT_FILENO);
-		exec_cmd(pipe_cmd->leftcmd);
+		exec_cmd(pipe_cmd->leftcmd, signal_alt_stack);
 	}
 
 	struct cmd *parsed_right = parse_line(pipe_cmd->rightcmd->scmd, &status);
@@ -346,7 +345,7 @@ handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
 		redirect_stream_to_pipe(fds[WRITE_SIDE],
 		                        fds[READ_SIDE],
 		                        STDIN_FILENO);
-		exec_cmd(pipe_cmd->rightcmd);
+		exec_cmd(pipe_cmd->rightcmd, signal_alt_stack);
 	}
 
 	close(fds[READ_SIDE]);
@@ -374,7 +373,7 @@ handle_pipe_cmd_flow(struct pipecmd *pipe_cmd)
 // 	in types.h
 // - casting could be a good option
 void
-exec_cmd(struct cmd *cmd)
+exec_cmd(struct cmd *cmd, stack_t *signal_alt_stack)
 {
 	// To be used in the different cases
 	struct execcmd *e_cmd;
@@ -392,7 +391,7 @@ exec_cmd(struct cmd *cmd)
 	case BACK: {
 		// runs a command in background
 		back_cmd = (struct backcmd *) cmd;
-		exec_cmd(back_cmd->c);
+		exec_cmd(back_cmd->c, signal_alt_stack);
 		break;
 	}
 
@@ -407,10 +406,11 @@ exec_cmd(struct cmd *cmd)
 	case PIPE: {
 		// pipes two commands
 		pipe_cmd = (struct pipecmd *) cmd;
-		int res = handle_pipe_cmd_flow(pipe_cmd);
+		int res = handle_pipe_cmd_flow(pipe_cmd, signal_alt_stack);
 		// free the memory allocated
 		// for the pipe tree structure
 		free_command(parsed_pipe);
+		free_alternative_stack(signal_alt_stack);
 		_exit(parse_exit_code(res));
 		break;
 	}

@@ -2,21 +2,9 @@
 #include "types.h"
 #include "readline.h"
 #include "runcmd.h"
-#include "updateprompt.h"
+#include "altstack.h"
 
-char prompt[PRMTLEN] = { 0 };
-
-/*
- * Frees the alternative stack memory.
- */
-static void
-free_alternative_stack(stack_t *alternative_stack)
-{
-	if (alternative_stack->ss_sp != NULL) {
-		free(alternative_stack->ss_sp);
-		alternative_stack->ss_sp = NULL;
-	}
-}
+char prompt[PRMTLEN] = { END_STRING };
 
 /*
  * Custom handler for SIGCHLD signal. Waits only for child processes from same
@@ -42,7 +30,7 @@ sigchild_handler(int /*signum*/, siginfo_t *signal_info, void * /*ucontext_t*/)
  * Initializes the signal handler for SIGCHLD to custom handler.
  */
 static void
-initialize_sigchild(stack_t *alternative_stack)
+initialize_sigaction_for_sigchild(stack_t *signal_alt_stack)
 {
 	struct sigaction signal_action;
 
@@ -53,38 +41,34 @@ initialize_sigchild(stack_t *alternative_stack)
 	int res = sigaction(SIGCHLD, &signal_action, NULL);
 	if (res == GENERIC_ERROR_CODE) {
 		perror("Error while setting up sigaction");
-		free_alternative_stack(alternative_stack);
+		free_alternative_stack(signal_alt_stack);
 		exit(EXIT_FAILURE);
 	}
 
-	if (sigaltstack(alternative_stack, NULL) == GENERIC_ERROR_CODE) {
-		perror("Error while installing alternative stack");
-		free_alternative_stack(alternative_stack);
-		exit(EXIT_FAILURE);
-	};
+	install_alternative_stack(signal_alt_stack);
 }
 
 
 // runs a shell command
 static void
-run_shell()
+run_shell(stack_t *signal_alt_stack)
 {
 	char *cmd;
 
 	while ((cmd = read_line(prompt)) != NULL)
-		if (run_cmd(cmd, prompt) == EXIT_SHELL)
+		if (run_cmd(cmd, prompt, signal_alt_stack) == EXIT_SHELL)
 			return;
 }
 
 // initializes the shell
 // with the "HOME" directory
 static void
-init_shell(stack_t *alternative_stack)
+init_shell(stack_t *signal_alt_stack)
 {
-	char buf[BUFLEN] = { 0 };
+	char buf[BUFLEN] = { END_STRING };
 	char *home = getenv(HOME_ENV_VAR_KEY);
 
-	if (chdir(home) < 0) {
+	if (chdir(home) == GENERIC_ERROR_CODE) {
 		snprintf(buf, sizeof buf, "cannot cd to %s ", home);
 		perror(buf);
 	} else {
@@ -92,29 +76,19 @@ init_shell(stack_t *alternative_stack)
 	}
 
 	setpgid(USE_PID_OF_THIS_PROCESS, SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
-	initialize_sigchild(alternative_stack);
+	initialize_sigaction_for_sigchild(signal_alt_stack);
 }
 
 int
 main(void)
 {
-	void *alt_stack_ptr = malloc(SIGSTKSZ);
+	stack_t signal_alt_stack;
+	init_alternative_stack(&signal_alt_stack);
 
-	if (alt_stack_ptr == NULL) {
-		perror("Error while allocating memory for signal alternative "
-		       "stack");
-		exit(EXIT_FAILURE);
-	}
+	init_shell(&signal_alt_stack);
 
-	stack_t alternative_stack;
-	alternative_stack.ss_sp = alt_stack_ptr;
-	alternative_stack.ss_size = SIGSTKSZ;
-	alternative_stack.ss_flags = SS_ONSTACK;
+	run_shell(&signal_alt_stack);
 
-	init_shell(&alternative_stack);
-
-	run_shell(&alternative_stack);
-
-	free_alternative_stack(&alternative_stack);
+	free_alternative_stack(&signal_alt_stack);
 	return 0;
 }

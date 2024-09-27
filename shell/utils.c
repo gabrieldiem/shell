@@ -45,6 +45,7 @@ printf_debug(char *format, ...)
 
 	return ret;
 #else
+	MARK_UNUSED(format);
 	return 0;
 #endif
 }
@@ -60,6 +61,8 @@ fprintf_debug(FILE *file, char *format, ...)
 
 	return ret;
 #else
+	MARK_UNUSED(file);
+	MARK_UNUSED(format);
 	return 0;
 #endif
 }
@@ -76,4 +79,10 @@ parse_exit_code(int raw_exit_code)
 		parsed = -WSTOPSIG(raw_exit_code);
 	}
 	return parsed;
+}
+
+void
+update_prompt(char prompt[PRMTLEN], char *new_prompt_text)
+{
+	snprintf(prompt, PRMTLEN - 1, "(%s)", new_prompt_text);
 }

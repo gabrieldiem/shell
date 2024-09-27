@@ -17,6 +17,8 @@ read_line(const char *prompt)
 		fprintf(stdout, "%s %s %s\n", COLOR_RED, prompt, COLOR_RESET);
 		fprintf(stdout, "%s", "$ ");
 	}
+#else
+	MARK_UNUSED(prompt);
 #endif
 
 	memset(buffer, 0, BUFLEN);

@@ -1,6 +1,6 @@
 #include "builtin.h"
-#include "updateprompt.h"
 #include <limits.h>
+#include "utils.h"
 
 static const int EXECUTED = (int) true, NOT_EXECUTED = (int) false;
 

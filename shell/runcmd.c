@@ -5,7 +5,7 @@ struct cmd *parsed_pipe;
 
 // runs the command in 'cmd'
 int
-run_cmd(char *cmd, char *prompt)
+run_cmd(char *cmd, char *prompt, stack_t *signal_alt_stack)
 {
 	pid_t _pid;
 	struct cmd *parsed;
@@ -51,19 +51,13 @@ run_cmd(char *cmd, char *prompt)
 			        SET_GPID_SAME_AS_PID_OF_THIS_PROCESS);
 		}
 
-		exec_cmd(parsed);
+		exec_cmd(parsed, signal_alt_stack);
 	}
 
 	// stores the pid of the process
 	parsed->pid = _pid;
 
 	// background process special treatment
-	// Hint:
-	// - check if the process is
-	//		going to be run in the 'back'
-	// - print info about it with
-	// 	'print_back_info()'
-
 	if (parsed->type == BACK) {
 		print_back_info(parsed);
 		free_command(parsed);
