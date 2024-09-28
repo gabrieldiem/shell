@@ -51,7 +51,12 @@
 
 #define USE_PID_OF_THIS_PROCESS 0
 #define SET_GPID_SAME_AS_PID_OF_THIS_PROCESS 0
+#define WAIT_FOR_A_PROCESS_THAT_SHARES_GPID_WITH_THIS_PROCESS 0
 #define NO_OPTIONS 0
+
+#define NUMBER_BUFF_LEN 20
+#define ZERO_CHAR '0'
+#define MINUS_SIGN_CHAR '-'
 
 // command representation after parsed
 #define EXEC 1
