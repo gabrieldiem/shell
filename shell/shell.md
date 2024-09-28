@@ -43,6 +43,51 @@ Un handler de SIGCHLD permite manejar la señal de manera asíncrona, llamando a
 
 ### Tuberías múltiples
 
+#### Investigar qué ocurre con el exit code reportado por la shell si se ejecuta un pipe ¿Cambia en algo?
+
+En caso de ejecutar un pipe, la única diferencia será que se muestra el exit code de cada proceso involucrado por separado. Esto se debe a que la shell termina ejecutando cada comando como si fuera un cmd de tipo exec, donde lo único que cambia es que se redirige el flujo estándar de estos procesos.
+Si se ejecuta, por ejemplo, el comando 
+
+    ls | grep -F hola | wc -l
+
+la shell reporta el status de cada proceso de la siguiente manera: <br>
+
+    Program: [ls ] exited, status: 0 
+    Program: [grep -F hola ] exited, status: 1 
+    Program: [wc -l] exited, status: 0
+
+#### ¿Qué ocurre si, en un pipe, alguno de los comandos falla? Mostrar evidencia (e.g. salidas de terminal) de este comportamiento usando bash. Comparar con su implementación.
+
+En caso de que alguno de los comandos dentro del pipe falle, los demás se ejecutarán de igual manera dado que todos corren en paralelo. La shell muestra el error producido por el proceso conflictivo, además de la salida de aquellos que no tuvieron un comportamiento inesperado. <br>
+Si ejecutamos, por ejemplo, el comando:
+
+    ls /asd | grep -F hola | wc -l
+
+La salida en bash será:
+
+    ls: no se puede acceder a '/asd': No existe el archivo o el directorio
+    0
+
+Podemos observar que a pesar de que el primer comando falla, igual se muestra la salida del wc. Si luego del comando ejecutamos: 
+
+    echo "${PIPESTATUS[0]} ${PIPESTATUS[1]} ${PIPESTATUS[2]}"
+
+Podemos ver los exit code de cada uno de los procesos.
+
+    2 1 0
+
+El '2' es el código de error arrojado por el **ls**. El '1' es el código de salida del **grep**, que indica que no hubo coincidencias entre "hola" y la entrada recibida del ls (archivo vacío en este caso). El '0' es el codigo de salida del **wc**, indicando que se ejecutó exitosamente y en este caso devolvió como output 0. Queda en evidencia que por mas que un error suceda, el resto de los comandos en el pipe se siguen ejecutando normalmente. <br>
+En nuestra implementación sucede lo mismo: si un proceso falla el resto se seguirá ejecutando de igual manera. Observamos que no es necesario ejecutar otro comando para conocer los exit code de cada proceso, sino que ya se ve reflejado en la salida.
+
+    $ ls /asd | grep -F hola | wc -l
+    ls: no se puede acceder a '/asd': No existe el archivo o el directorio
+    0
+    Program: [ls /asd ] exited, status: 2
+    Program: [grep -F hola ] exited, status: 1
+    Program: [wc -l] exited, status: 0
+
+
+
 ---
 
 ### Variables de entorno temporarias
