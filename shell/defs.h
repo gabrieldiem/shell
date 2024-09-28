@@ -33,6 +33,8 @@
 #define MARK_UNUSED(parameter)
 #endif
 
+#define MARK_UNUSED_ALWAYS(parameter) (void) (parameter)
+
 #define END_STRING '\0'
 #define END_LINE '\n'
 #define SPACE ' '
