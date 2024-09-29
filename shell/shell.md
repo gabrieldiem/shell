@@ -181,6 +181,8 @@ Los comandos marcados como "BACK" (background process) funcionan correctamente y
 
 Debido a que el handler para SIGCHLD se ejecuta en el espacio de usuario, se utilizó un stack alternativo con `malloc` y `sigaltstack` para evitar bugs. Dicho stack es liberado antes de finalizar el programa.
 
+Finalmente, para poder imprimir por pantalla de forma async signal safe los procesos de background, se escribe con formato en el file descriptor de stdout.
+
 #### ¿Por qué es necesario el uso de señales?
 
 En el caso de procesos en segundo plano, las señales son necesarias para que el shell sepa cuándo un proceso hijo ha terminado sin bloquear su ejecución. En particular, SIGCHLD se usa para notificar al shell cuando un proceso hijo (en segundo plano) termina.
