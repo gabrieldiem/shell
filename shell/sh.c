@@ -6,6 +6,10 @@
 
 char prompt[PRMTLEN] = { END_STRING };
 
+/*
+ * Converts an integer to its string representation
+ * and writes it to a file descriptor.
+ */
 static inline void
 write_number(int fd, int number)
 {

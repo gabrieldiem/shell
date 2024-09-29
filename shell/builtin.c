@@ -24,10 +24,6 @@ exit_shell(char *cmd, int *status)
 		return NOT_EXECUTED;
 	}
 
-	/*
-	        needs to kill background processes when implemented
-	*/
-
 	*status = EXIT_SUCCESS;
 	return EXECUTED;
 }
