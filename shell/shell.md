@@ -171,13 +171,15 @@ El comando pwd no es necesario que sea un built-in de la shell, aunque en shells
 
 #### Explicar detalladamente el mecanismo completo utilizado.
 
-Al inicializar la shell (en sh.c), se utiliza `sigaction` para setear el manejo de la señal SIGCHLD con un handler custom. Este último invoca `waitpid` solamente para aquellos procesos hijos que se ejecutan en segundo plano mediante el process group id. Además, dicho wait se realiza con un flag, `WNOHANG` (return inmediatamente si ningún hijo ha terminado), que transforma a la operación en no bloqueante, permitiendo así que la shell siga recibiendo comandos del usuario. También imprime por pantalla el pid del proceso finalizado y su estado.
+Al inicializar la shell (en sh.c), se utiliza `sigaction` para setear el manejo de la señal SIGCHLD con un handler custom. Este último invoca `waitpid` solamente para aquellos procesos hijos que se ejecutan en segundo plano mediante el process group id. Para esto último, se utilizó setpgid(0, 0) en el proceso shell y en los procesos hijos de la shell que se ejecutan en primer plano. Dicha llamada a setpgid utiliza el PID del calling process y setea el PGID igual al PID. 
 
-Luego, en cada iteración del ciclo que ejecuta cada comando (runcmd) se verifica si el comando actual es de primer y segundo plano. Para aquellos en primer plano se realiza un wait e imprime el estado, mientras que para los de segundo plano se imprime la información correspondiente con `print_back_info` y no se realiza ningún wait. Esto se debe a que el wait para dichos procesos será aquel implementado en el handler de la shell, como se mencionó anteriormente. De no ser así, la shell se bloquearía esperando a que termine y no se trataría de un proceso en segundo plano.
+El wait mencionado anteriormente se realiza con un flag, `WNOHANG` (return inmediatamente si ningún hijo ha terminado), que transforma a la operación en no bloqueante, permitiendo así que la shell siga recibiendo comandos del usuario. También imprime por pantalla el pid del proceso finalizado y su estado.
+
+Luego, en cada iteración del ciclo que ejecuta cada comando (runcmd) se verifica si el comando actual es de primer o segundo plano. Para aquellos en primer plano se realiza un wait e imprime el estado, mientras que para los de segundo plano se imprime la información correspondiente con `print_back_info` y no se realiza ningún wait. Esto se debe a que el wait para dichos procesos será aquel implementado en el handler de la shell, como se mencionó anteriormente. De no ser así, la shell se bloquearía esperando a que termine y no se trataría de un proceso en segundo plano.
 
 Los comandos marcados como "BACK" (background process) funcionan correctamente ya sea que posean una redirección de i/o o no, ya que dicha información es verificada con el parámetro "c" del struct backcmd, y se ejecutan las mismas funciones de los casos EXEC y REDIR respectivamente.
 
-Debido a que el handler para SIGCHLD se ejecuta en el espacio de usuario, se utilizó un stack alternativo con `malloc` y `sigaltstack` para evitar bugs.
+Debido a que el handler para SIGCHLD se ejecuta en el espacio de usuario, se utilizó un stack alternativo con `malloc` y `sigaltstack` para evitar bugs. Dicho stack es liberado antes de finalizar el programa.
 
 #### ¿Por qué es necesario el uso de señales?
 
